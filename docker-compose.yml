@@ -1,0 +1,428 @@
+# ═══════════════════════════════════════════════════════════════
+#  MedocCloudNative — Docker Compose
+#  Commande : docker compose up -d --build
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    INFRASTRUCTURE                           │
+# └─────────────────────────────────────────────────────────────┘
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: vxp_mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE:      ${MARIADB_DATABASE}
+      MARIADB_USER:          ${MARIADB_USER}
+      MARIADB_PASSWORD:      ${MARIADB_PASSWORD}
+    ports:
+      - "${MARIADB_PORT}:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./docker/mariadb/conf/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - vxp_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: vxp_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - vxp_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: vxp_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - vxp_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                   MICROSERVICES                             │
+# └─────────────────────────────────────────────────────────────┘
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: vxp_auth
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      JWT_SECRET:  ${JWT_SECRET}
+      PORT:        3001
+      NODE_ENV:    production
+    ports:
+      - "${AUTH_PORT}:3001"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  drug-service:
+    build:
+      context: ./services/drug-service
+      dockerfile: Dockerfile
+    container_name: vxp_drug
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3002
+      NODE_ENV:    production
+    ports:
+      - "${DRUG_PORT}:3002"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  posology-service:
+    build:
+      context: ./services/posology-service
+      dockerfile: Dockerfile
+    container_name: vxp_posology
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3003
+      NODE_ENV:    production
+    ports:
+      - "${POSOLOGY_PORT}:3003"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  interaction-service:
+    build:
+      context: ./services/interaction-service
+      dockerfile: Dockerfile
+    container_name: vxp_interaction
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3004
+      NODE_ENV:    production
+    ports:
+      - "${INTERACTION_PORT}:3004"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  search-service:
+    build:
+      context: ./services/search-service
+      dockerfile: Dockerfile
+    container_name: vxp_search
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3005
+      NODE_ENV:    production
+    ports:
+      - "${SEARCH_PORT}:3005"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  indication-service:
+    build:
+      context: ./services/indication-service
+      dockerfile: Dockerfile
+    container_name: vxp_indication
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3006
+      NODE_ENV:    production
+    ports:
+      - "${INDICATION_PORT}:3006"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  safety-service:
+    build:
+      context: ./services/safety-service
+      dockerfile: Dockerfile
+    container_name: vxp_safety
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3007
+      NODE_ENV:    production
+    ports:
+      - "${SAFETY_PORT}:3007"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  international-service:
+    build:
+      context: ./services/international-service
+      dockerfile: Dockerfile
+    container_name: vxp_international
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3008
+      NODE_ENV:    production
+    ports:
+      - "${INTERNATIONAL_PORT}:3008"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  document-service:
+    build:
+      context: ./services/document-service
+      dockerfile: Dockerfile
+    container_name: vxp_document
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3009
+      NODE_ENV:    production
+    ports:
+      - "${DOCUMENT_PORT}:3009"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  patient-service:
+    build:
+      context: ./services/patient-service
+      dockerfile: Dockerfile
+    container_name: vxp_patient
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      JWT_SECRET:  ${JWT_SECRET}
+      PORT:        3010
+      NODE_ENV:    production
+    ports:
+      - "${PATIENT_PORT}:3010"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: vxp_notification
+    restart: unless-stopped
+    environment:
+      DB_HOST:        mariadb
+      DB_PORT:        3306
+      DB_USER:        ${MARIADB_USER}
+      DB_PASSWORD:    ${MARIADB_PASSWORD}
+      DB_NAME:        ${MARIADB_DATABASE}
+      RABBITMQ_URL:   amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      PORT:           3011
+      NODE_ENV:       production
+    ports:
+      - "${NOTIFICATION_PORT}:3011"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  symptom-advisor-service:
+    build:
+      context: ./services/symptom-advisor-service
+      dockerfile: Dockerfile
+    container_name: vxp_advisor
+    restart: unless-stopped
+    environment:
+      DB_HOST:     mariadb
+      DB_PORT:     3306
+      DB_USER:     ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      DB_NAME:     ${MARIADB_DATABASE}
+      PORT:        3012
+      NODE_ENV:    production
+    ports:
+      - "${ADVISOR_PORT}:3012"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+  chat-service:
+    build:
+      context: ./services/chat-service
+      dockerfile: Dockerfile
+    container_name: vxp_chat
+    restart: unless-stopped
+    environment:
+      DB_HOST:      mariadb
+      DB_PORT:      3306
+      DB_USER:      ${MARIADB_USER}
+      DB_PASSWORD:  ${MARIADB_PASSWORD}
+      DB_NAME:      ${MARIADB_DATABASE}
+      OLLAMA_URL:   http://host.docker.internal:11434
+      QWEN_MODEL:   qwen2.5:1.5b
+      PORT:         3013
+      NODE_ENV:     production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3013:3013"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - vxp_network
+
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                     API GATEWAY                             │
+# └─────────────────────────────────────────────────────────────┘
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: vxp_gateway
+    restart: unless-stopped
+    environment:
+      PORT:                    3000
+      JWT_SECRET:              ${JWT_SECRET}
+      NODE_ENV:                production
+      AUTH_SERVICE_URL:        http://auth-service:3001
+      DRUG_SERVICE_URL:        http://drug-service:3002
+      POSOLOGY_SERVICE_URL:    http://posology-service:3003
+      INTERACTION_SERVICE_URL: http://interaction-service:3004
+      SEARCH_SERVICE_URL:      http://search-service:3005
+      INDICATION_SERVICE_URL:  http://indication-service:3006
+      SAFETY_SERVICE_URL:      http://safety-service:3007
+      INTERNATIONAL_SERVICE_URL: http://international-service:3008
+      DOCUMENT_SERVICE_URL:    http://document-service:3009
+      PATIENT_SERVICE_URL:     http://patient-service:3010
+      NOTIFICATION_SERVICE_URL: http://notification-service:3011
+      ADVISOR_SERVICE_URL:     http://symptom-advisor-service:3012
+    ports:
+      - "${GATEWAY_PORT}:3000"
+    depends_on:
+      - auth-service
+      - drug-service
+      - posology-service
+      - interaction-service
+      - search-service
+      - indication-service
+      - safety-service
+      - international-service
+      - document-service
+      - patient-service
+      - notification-service
+      - symptom-advisor-service
+    networks:
+      - vxp_network
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                      VOLUMES                                │
+# └─────────────────────────────────────────────────────────────┘
+volumes:
+  mariadb_data:
+  redis_data:
+  rabbitmq_data:
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                      RÉSEAU                                 │
+# └─────────────────────────────────────────────────────────────┘
+networks:
+  vxp_network:
+    driver: bridge
