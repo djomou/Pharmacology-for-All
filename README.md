@@ -1,6 +1,6 @@
 # 💊 Pharmacology for All
 
-**Pharmacology for All** est un écosystème logiciel *cloud-native* de référentiel pharmaceutique numérique s'appuyant sur une architecture moderne en microservices. Développée comme projet de fin d'études à l'**École Nationale Supérieure Polytechnique de Douala (ENSPD)** en partenariat avec **MYLE Cameroun**, cette plateforme vise à briser l'indisponibilité de l'information médicamenteuse au sein des établissements de santé disposant de ressources limitées.
+**Pharmacology for All** est un écosystème logiciel *cloud-native* de référentiel pharmaceutique numérique s'appuyant sur une architecture moderne en microservices. Développée comme projet de fin d'études à l'**École Nationale Supérieure Polytechnique de Douala (ENSPD)**, cette plateforme vise à briser l'indisponibilité de l'information médicamenteuse au sein des établissements de santé disposant de ressources limitées.
 
 La plateforme intègre nativement un **assistant conversationnel médical intelligent et 100% local (RAG)** permettant aux patients et professionnels d'interroger un corpus massif de plus de **106 283 médicaments** tout en préservant la confidentialité totale des données de santé.
 
